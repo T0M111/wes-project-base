@@ -9,16 +9,16 @@ const MONGODB_URI = process.env.MONGODB_URI;
 
 const products: Product[] = [
   {
-    name: 'Earthen Bottle',
-    price: 39.95,
-    img: 'https://tailwindui.com/img/ecommerce-images/category-page-04-image-card-01.jpg',
-    description: 'What a bottle!',
+    name: 'Canción de Hielo y Fuego',
+    price: 29.95,
+    img: 'https://imgs.search.brave.com/u2y3CfjhnRvXbI4_R8m6_8jUcVA79CtWgNgduTM0dx8/rs:fit:860:0:0:0/g:ce/aHR0cHM6Ly9tZWRp/YS52YW5kYWwubmV0/L2kvNjIweDQ0Mi81/LTIwMjIvMjAyMjUx/OTE0MjYxNDU0XzIu/anBn',
+    description: 'What a book!',
   },
   {
-    name: 'Nomad Tumbler',
-    price: 39.95,
-    img: 'https://tailwindui.com/img/ecommerce-images/category-page-04-image-card-02.jpg',
-    description: 'Yet another item',
+    name: 'El paciente',
+    price: 20.95,
+    img: 'https://imgs.search.brave.com/83nbE_m_68Lnr5wmXpPc7uFHla6awN90jWUoISOQKh4/rs:fit:860:0:0:0/g:ce/aHR0cHM6Ly9odHRw/Mi5tbHN0YXRpYy5j/b20vRF9RX05QXzJY/XzYwNTk3Mi1NTEE3/MDE5NTA4MTMzMV8w/NjIwMjMtVi53ZWJw',
+    description: 'Great book!',
   },
 ];
 
