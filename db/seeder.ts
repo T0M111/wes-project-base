@@ -1,5 +1,6 @@
 import Products, { Product } from '@/models/Product';
 import Users, { User } from '@/models/User';
+import Orders from '@/models/Order';
 import dotenv from 'dotenv';
 import mongoose from 'mongoose';
 
@@ -39,7 +40,13 @@ async function seed() {
     throw new Error('Database connection is undefined.');
   }
 
+  // Create empty collections
+  await Products.createCollection();
+  await Users.createCollection();
+  await Orders.createCollection(); // Optional: only if you have an Order model
+  
   const insertedProducts = await Products.insertMany(products);
+  
   const user: User = {
     email: 'johndoe@example.com',
     password: '1234',
