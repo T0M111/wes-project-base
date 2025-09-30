@@ -12,6 +12,13 @@ if (!mongoose.connection.readyState && !MONGODB_URI) {
   throw new Error('Please define the MONGODB_URI environment variable inside .env.local');
 }
 
+export interface GetCartItemResponse {
+  product: Product & { _id: Types.ObjectId };
+  qty: number;
+}
+export interface GetCartResponse {
+  items: GetCartItemResponse[];
+}
 export interface GetProductsResponse {
   products: (Product & { _id: Types.ObjectId })[];
 }
@@ -67,6 +74,27 @@ const user = await Users.findById(userId, userProjection)
 return user
 }
 
+//Hacer un get users cart item filtrado por id de usuario que lo que hace es que te devuelva los productos del carrito con sus datos
+export async function getUserProducts(userId: Types.ObjectId | string): Promise<GetCartResponse | null> {
+  await connect();
+  
+  const user = await Users.findById(userId)
+    .populate({
+      path: 'cartItems.product',
+      select: '-__v'
+    });
+
+  if (!user) return null;
+
+  return {
+    items: user.cartItems
+      .filter(item => item.product !== null)
+      .map(item => ({
+        product: item.product as unknown as Product & { _id: Types.ObjectId },
+        qty: item.qty
+      }))
+  };
+}
 /** POST /users */
 export async function createUser(user: {
   email: string;
