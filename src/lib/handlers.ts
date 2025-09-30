@@ -15,6 +15,9 @@ if (!mongoose.connection.readyState && !MONGODB_URI) {
 export interface GetProductsResponse {
   products: (Product & { _id: Types.ObjectId })[];
 }
+export interface GetProductResponse {
+  product: Product & { _id: Types.ObjectId };
+}
 
 export interface CreateUserResponse {
   _id: Types.ObjectId;
@@ -36,13 +39,22 @@ export async function getProducts(): Promise<GetProductsResponse> {
     products: products as unknown as (Product & { _id: Types.ObjectId })[],
   };
 }
+
+
+/** GET /products/:productId */
+export async function getProduct(productId: string): Promise<GetProductResponse | null> {
+  await connect();
+
+  // Mejor usa proyección con 0/1 o select, no "false"
+  const product = await Products.findById(productId, { __v: 0 }); // o: .select('-__v')
+  return product ? { product } : null;
+}
 export interface GetUserResponse
 extends Pick<User, 'email' | 'name' | 'surname' | 'address' | 'birthdate'> {
 _id: Types.ObjectId
 }
-export async function getUser(
-userId: Types.ObjectId | string
-): Promise<GetUserResponse | null> {
+export async function getUser( userId: Types.ObjectId | string ):
+ Promise<GetUserResponse | null> {
 await connect()
 const userProjection = {
 email: true,
