@@ -126,3 +126,71 @@ export async function PUT(
 
   return NextResponse.json(responseBody, { status, headers })
 }
+
+export async function DELETE(
+  _request: NextRequest,
+  { params }: { params: { userId: string; productId: string } }
+): Promise<
+  | NextResponse<CartResponseBody>
+  | NextResponse<{ error: string; message: string }>
+> {
+  const { userId, productId } = params
+
+  // Validate IDs
+  if (!Types.ObjectId.isValid(userId) || !Types.ObjectId.isValid(productId)) {
+    return NextResponse.json(
+      { error: 'WRONG_PARAMS', message: 'Invalid user ID or product ID.' },
+      { status: 400 }
+    )
+  }
+
+  await connect()
+
+  // Ensure user exists
+  const user = await Users.findById(userId)
+  if (!user) {
+    return NextResponse.json(
+      { error: 'NOT_FOUND', message: 'User not found.' },
+      { status: 404 }
+    )
+  }
+
+  // Ensure product exists
+  const productExists = await Products.exists({ _id: productId })
+  if (!productExists) {
+    return NextResponse.json(
+      { error: 'NOT_FOUND', message: 'Product not found.' },
+      { status: 404 }
+    )
+  }
+
+  // Remove cart item if present
+  await Users.updateOne(
+    { _id: userId },
+    { $pull: { cartItems: { product: new Types.ObjectId(productId) } } }
+  )
+
+  // Return populated cart
+  const finalUser = await Users.findById(userId).populate({
+    path: 'cartItems.product',
+    select: '-__v',
+  })
+
+  if (!finalUser) {
+    return NextResponse.json(
+      { error: 'NOT_FOUND', message: 'User not found.' },
+      { status: 404 }
+    )
+  }
+
+  const responseBody: CartResponseBody = {
+    cartItems: finalUser.cartItems
+      .filter((i) => i.product !== null)
+      .map((i) => ({
+        product: i.product as unknown as CartItemProduct,
+        qty: i.qty,
+      })),
+  }
+
+  return NextResponse.json(responseBody, { status: 200 })
+}
