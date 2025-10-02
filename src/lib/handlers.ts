@@ -3,6 +3,7 @@ import mongoose, { Types } from 'mongoose';
 import connect from '@/lib/mongoose';
 import Products, { Product } from '@/models/Product';
 import Users, { User } from '@/models/User';
+import Orders, { Order } from '@/models/Order';
 
 dotenv.config({ path: `.env.local`, override: true });
 const MONGODB_URI = process.env.MONGODB_URI;
@@ -120,4 +121,38 @@ export async function createUser(user: {
   const created = await Users.create(doc);
 
   return { _id: created._id as Types.ObjectId };
+}
+//GET /users/:userId/Orders
+export interface GetOrderResponse {
+  orders: {
+    _id: Types.ObjectId;
+    user: Types.ObjectId;
+    items: {
+      product: Product & { _id: Types.ObjectId };
+      qty: number;
+    }[];
+  }[];
+}
+
+export async function getUserOrders(userId: Types.ObjectId | string): Promise<GetOrderResponse | null> {
+  await connect();
+  
+  const user = await Users.findById(userId)
+    .populate({
+      path: 'orders',
+      populate: { path: 'items.product', model: 'Product', select: '-__v' }
+    });
+  if (!user) return null;
+
+// forzar el tipo localmente porque User.orders en el modelo sigue declarado como ObjectId[]
+const orders = (user.orders as unknown as (Order & { _id: Types.ObjectId })[]).map(order => ({
+  _id: order._id,
+  user: order.user,
+  items: order.items.map(item => ({
+    product: item.product as unknown as Product & { _id: Types.ObjectId },
+    qty: item.qty,
+  })),
+}));
+
+return { orders };
 }
