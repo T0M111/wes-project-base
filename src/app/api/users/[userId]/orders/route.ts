@@ -6,6 +6,7 @@ import connect from '@/lib/mongoose';
 import '@/models/Order';
 import '@/models/Product';
 import Users from '@/models/User';
+import { ErrorResponse, postUserOrder, PostUserOrderResponse } from '@/lib/handlers';
 
 
 // DTOs que devolvemos
@@ -83,4 +84,43 @@ export async function GET(
       { status: 500 }
     );
   }
+}
+
+export async function POST(
+  request: NextRequest,
+  { params }: { params: { userId: string } }
+): Promise<NextResponse<PostUserOrderResponse> | NextResponse<ErrorResponse>> {
+  const { userId } = params
+  const body = await request.json()
+
+  // 🔹 Validar body
+  if (!body.items || !Array.isArray(body.items) || body.items.length === 0) {
+    return NextResponse.json(
+      {
+        error: 'WRONG_PARAMS',
+        message: 'Request parameters are wrong or missing.',
+      },
+      { status: 400 }
+    )
+  }
+
+  // 🔹 Intentar crear la orden
+  const created = await postUserOrder(userId, body)
+
+  // 🔹 Usuario no encontrado
+  if (created === null) {
+    return NextResponse.json(
+      {
+        error: 'NOT_FOUND',
+        message: `User with ID ${userId} not found.`,
+      },
+      { status: 404 }
+    )
+  }
+
+  // 🔹 Orden creada correctamente
+  const headers = new Headers()
+  headers.append('Location', `/api/users/${userId}/orders/${created._id}`)
+
+  return NextResponse.json(created, { status: 201, headers })
 }

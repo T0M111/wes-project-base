@@ -30,6 +30,9 @@ export interface GetProductResponse {
 export interface CreateUserResponse {
   _id: Types.ObjectId;
 }
+export interface PostUserOrderResponse {
+  _id: Types.ObjectId;
+}
 
 export interface ErrorResponse {
   error: string;
@@ -134,7 +137,8 @@ export interface GetOrderResponse {
   }[];
 }
 
-export async function getUserOrders(userId: Types.ObjectId | string): Promise<GetOrderResponse | null> {
+export async function getUserOrders(userId: Types.ObjectId |
+   string): Promise<GetOrderResponse | null> {
   await connect();
   
   const user = await Users.findById(userId)
@@ -155,4 +159,42 @@ const orders = (user.orders as unknown as (Order & { _id: Types.ObjectId })[]).m
 }));
 
 return { orders };
+}
+export async function postUserOrder(
+  userId: Types.ObjectId | string,
+  order: {
+    items: { product: Types.ObjectId; qty: number }[];
+  }
+): Promise<PostUserOrderResponse | null> {
+  await connect();
+
+  // 🔹 Validación: ID válido
+  if (!userId || !Types.ObjectId.isValid(userId)) {
+    console.warn('[postUserOrder] Invalid user ID:', userId);
+    return null;
+  }
+
+  // 🔹 Conversión segura a ObjectId
+  const uid = typeof userId === 'string' ? new Types.ObjectId(userId) : userId;
+
+  // 🔹 Verificar que el usuario existe
+  const user = await Users.findById(uid);
+  if (!user) {
+    console.warn('[postUserOrder] User not found:', userId);
+    return null;
+  }
+
+  const newOrder = {
+    user: uid,
+    items: order.items.map(item => ({
+      product: item.product,
+      qty: item.qty,
+    })),
+  };
+
+  const createdOrder = await Orders.create(newOrder);
+  user.orders.push(createdOrder._id);
+  await user.save();
+
+  return { _id: createdOrder._id as Types.ObjectId };
 }
