@@ -165,13 +165,20 @@ export async function postUserOrder(
   order: {
     items: { product: Types.ObjectId; qty: number }[];
   }
-): Promise<PostUserOrderResponse | null> {
+): Promise<PostUserOrderResponse | string> {
   await connect();
 
   // 🔹 Validación: ID válido
   if (!userId || !Types.ObjectId.isValid(userId)) {
     console.warn('[postUserOrder] Invalid user ID:', userId);
-    return null;
+    return "user no valido";
+  }
+  for (const item of order.items) {
+    const validProductId = await Products.exists({ _id: item.product });
+    if (!validProductId) {
+      console.warn('[postUserOrder] Invalid order item:', item);
+      return "product not found";
+    }
   }
 
   // 🔹 Conversión segura a ObjectId
@@ -181,7 +188,7 @@ export async function postUserOrder(
   const user = await Users.findById(uid);
   if (!user) {
     console.warn('[postUserOrder] User not found:', userId);
-    return null;
+    return "user not found";
   }
 
   const newOrder = {

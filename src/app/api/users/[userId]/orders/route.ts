@@ -91,36 +91,67 @@ export async function POST(
   { params }: { params: { userId: string } }
 ): Promise<NextResponse<PostUserOrderResponse> | NextResponse<ErrorResponse>> {
   const { userId } = params
-  const body = await request.json()
 
-  // 🔹 Validar body
-  if (!body.items || !Array.isArray(body.items) || body.items.length === 0) {
+  let body: { items: { product: string; qty: number }[] }
+  try {
+    body = await request.json()
+  } catch {
     return NextResponse.json(
-      {
-        error: 'WRONG_PARAMS',
-        message: 'Request parameters are wrong or missing.',
-      },
+      { error: 'BAD_REQUEST', message: 'Invalid JSON body.' },
       { status: 400 }
     )
   }
 
-  // 🔹 Intentar crear la orden
-  const created = await postUserOrder(userId, body)
-
-  // 🔹 Usuario no encontrado
-  if (created === null) {
+  if (!body?.items || !Array.isArray(body.items) || body.items.length === 0) {
     return NextResponse.json(
-      {
-        error: 'NOT_FOUND',
-        message: `User with ID ${userId} not found.`,
-      },
-      { status: 404 }
+      { error: 'WRONG_PARAMS', message: 'Request parameters are wrong or missing.' },
+      { status: 400 }
     )
   }
 
-  // 🔹 Orden creada correctamente
-  const headers = new Headers()
-  headers.append('Location', `/api/users/${userId}/orders/${created._id}`)
+  // (opcional) validar que los product sean ObjectId válidos antes de llamar al handler
+  for (const it of body.items) {
+    if (!it?.product || !Types.ObjectId.isValid(it.product) || !it?.qty || it.qty < 1) {
+      return NextResponse.json(
+        { error: 'WRONG_PARAMS', message: 'Each item needs a valid product and qty >= 1.' },
+        { status: 400 }
+      )
+    }
+  }
 
-  return NextResponse.json(created, { status: 201, headers })
+  // Llamamos al handler tal cual (él hará sus validaciones también)
+  const result = await postUserOrder(userId, {
+    items: body.items.map(i => ({ product: new Types.ObjectId(i.product), qty: i.qty })),
+  })
+
+  // Mapear strings de error a HTTP
+  if (typeof result === 'string') {
+    switch (result) {
+      case 'user no valido':
+        return NextResponse.json(
+          { error: 'WRONG_PARAMS', message: 'Invalid user ID.' },
+          { status: 400 }
+        )
+      case 'user not found':
+        return NextResponse.json(
+          { error: 'NOT_FOUND', message: `User with ID ${userId} not found.` },
+          { status: 404 }
+        )
+      case 'product not found':
+        return NextResponse.json(
+          { error: 'WRONG_PARAMS', message: 'One or more products do not exist.' },
+          { status: 400 }
+        )
+      default:
+        return NextResponse.json(
+          { error: 'INTERNAL', message: 'Unexpected error.' },
+          { status: 500 }
+        )
+    }
+  }
+
+  // Éxito: result es { _id }
+  const headers = new Headers()
+  headers.append('Location', `/api/users/${userId}/orders/${result._id}`)
+  return NextResponse.json(result, { status: 201, headers })
 }
