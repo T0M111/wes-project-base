@@ -3,6 +3,7 @@ import mongoose, { Types } from 'mongoose';
 import connect from '@/lib/mongoose';
 import Products, { Product } from '@/models/Product';
 import Users, { User } from '@/models/User';
+import Orders, { Order } from '@/models/Order';
 
 dotenv.config({ path: `.env.local`, override: true });
 const MONGODB_URI = process.env.MONGODB_URI;
@@ -27,6 +28,9 @@ export interface GetProductResponse {
 }
 
 export interface CreateUserResponse {
+  _id: Types.ObjectId;
+}
+export interface PostUserOrderResponse {
   _id: Types.ObjectId;
 }
 
@@ -120,4 +124,84 @@ export async function createUser(user: {
   const created = await Users.create(doc);
 
   return { _id: created._id as Types.ObjectId };
+}
+//GET /users/:userId/Orders
+export interface GetOrderResponse {
+  orders: {
+    _id: Types.ObjectId;
+    user: Types.ObjectId;
+    items: {
+      product: Product & { _id: Types.ObjectId };
+      qty: number;
+    }[];
+  }[];
+}
+
+export async function getUserOrders(userId: Types.ObjectId |
+   string): Promise<GetOrderResponse | null> {
+  await connect();
+  
+  const user = await Users.findById(userId)
+    .populate({
+      path: 'orders',
+      populate: { path: 'items.product', model: 'Product', select: '-__v' }
+    });
+  if (!user) return null;
+
+// forzar el tipo localmente porque User.orders en el modelo sigue declarado como ObjectId[]
+const orders = (user.orders as unknown as (Order & { _id: Types.ObjectId })[]).map(order => ({
+  _id: order._id,
+  user: order.user,
+  items: order.items.map(item => ({
+    product: item.product as unknown as Product & { _id: Types.ObjectId },
+    qty: item.qty,
+  })),
+}));
+
+return { orders };
+}
+export async function postUserOrder(
+  userId: Types.ObjectId | string,
+  order: {
+    items: { product: Types.ObjectId; qty: number }[];
+  }
+): Promise<PostUserOrderResponse | string> {
+  await connect();
+
+  // 🔹 Validación: ID válido
+  if (!userId || !Types.ObjectId.isValid(userId)) {
+    console.warn('[postUserOrder] Invalid user ID:', userId);
+    return "user no valido";
+  }
+  for (const item of order.items) {
+    const validProductId = await Products.exists({ _id: item.product });
+    if (!validProductId) {
+      console.warn('[postUserOrder] Invalid order item:', item);
+      return "product not found";
+    }
+  }
+
+  // 🔹 Conversión segura a ObjectId
+  const uid = typeof userId === 'string' ? new Types.ObjectId(userId) : userId;
+
+  // 🔹 Verificar que el usuario existe
+  const user = await Users.findById(uid);
+  if (!user) {
+    console.warn('[postUserOrder] User not found:', userId);
+    return "user not found";
+  }
+
+  const newOrder = {
+    user: uid,
+    items: order.items.map(item => ({
+      product: item.product,
+      qty: item.qty,
+    })),
+  };
+
+  const createdOrder = await Orders.create(newOrder);
+  user.orders.push(createdOrder._id);
+  await user.save();
+
+  return { _id: createdOrder._id as Types.ObjectId };
 }

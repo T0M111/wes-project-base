@@ -29,6 +29,10 @@ import mongoose, { Schema, Types } from 'mongoose';
           min: 1,
         },
       },
-    ],
+    ]
   });
-export default mongoose.models.Order as mongoose.Model<Order> || mongoose.model<Order>('Order', OrderSchema);
+const OrderModel =
+  (mongoose.models.Order as mongoose.Model<Order>) ||
+  mongoose.model<Order>('Order', OrderSchema);
+
+export default OrderModel;
