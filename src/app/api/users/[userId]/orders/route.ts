@@ -92,7 +92,20 @@ export async function POST(
 ): Promise<NextResponse<PostUserOrderResponse> | NextResponse<ErrorResponse>> {
   const { userId } = params
 
-  let body: { items: { product: string; qty: number }[] }
+  // Validate userId
+  if (!Types.ObjectId.isValid(userId)) {
+    return NextResponse.json(
+      { error: 'WRONG_PARAMS', message: 'Invalid user ID.' },
+      { status: 400 }
+    )
+  }
+
+  let body: {
+    items?: { product: string; qty: number }[]
+    address?: string
+    cardHolder?: string
+    cardNumber?: string
+  }
   try {
     body = await request.json()
   } catch {
@@ -102,29 +115,97 @@ export async function POST(
     )
   }
 
-  if (!body?.items || !Array.isArray(body.items) || body.items.length === 0) {
+  const address = typeof body.address === 'string' ? body.address.trim() : ''
+  const cardHolder = typeof body.cardHolder === 'string' ? body.cardHolder.trim() : ''
+  const cardNumber = typeof body.cardNumber === 'string' ? body.cardNumber.trim() : ''
+
+  // We allow creating from items array OR from the user's cart if items is missing
+  const creatingFromItems = Array.isArray(body.items) && body.items.length > 0
+
+  await connect()
+
+  if (creatingFromItems) {
+    // Validate items
+    for (const it of body.items!) {
+      if (!it?.product || !Types.ObjectId.isValid(it.product) || !it?.qty || it.qty < 1) {
+        return NextResponse.json(
+          { error: 'WRONG_PARAMS', message: 'Each item needs a valid product and qty >= 1.' },
+          { status: 400 }
+        )
+      }
+    }
+
+    const result = await postUserOrder(userId, {
+      items: body.items!.map((i) => ({ product: new Types.ObjectId(i.product), qty: i.qty })),
+      address,
+      cardHolder,
+      cardNumber,
+    })
+
+    if (typeof result === 'string') {
+      switch (result) {
+        case 'user no valido':
+          return NextResponse.json(
+            { error: 'WRONG_PARAMS', message: 'Invalid user ID.' },
+            { status: 400 }
+          )
+        case 'user not found':
+          return NextResponse.json(
+            { error: 'NOT_FOUND', message: `User with ID ${userId} not found.` },
+            { status: 404 }
+          )
+        case 'product not found':
+          return NextResponse.json(
+            { error: 'WRONG_PARAMS', message: 'One or more products do not exist.' },
+            { status: 400 }
+          )
+        default:
+          return NextResponse.json(
+            { error: 'INTERNAL', message: 'Unexpected error.' },
+            { status: 500 }
+          )
+      }
+    }
+
+    const headers = new Headers()
+    headers.append('Location', `/api/users/${userId}/orders/${result._id}`)
+    return NextResponse.json(result, { status: 201, headers })
+  }
+
+  // Build from user's cart (purchase flow)
+  const user = await Users.findById(userId).populate({
+    path: 'cartItems.product',
+    select: '_id price',
+  })
+
+  if (!user) {
     return NextResponse.json(
-      { error: 'WRONG_PARAMS', message: 'Request parameters are wrong or missing.' },
+      { error: 'NOT_FOUND', message: 'User not found.' },
+      { status: 404 }
+    )
+  }
+
+  const itemsFromCart = user.cartItems
+    .filter((ci) => ci.product)
+    .map((ci) => ({
+      product: new Types.ObjectId((ci.product as { _id: Types.ObjectId })._id),
+      qty: ci.qty,
+    }))
+
+  if (itemsFromCart.length === 0) {
+    return NextResponse.json(
+      { error: 'WRONG_PARAMS', message: 'Cart is empty.' },
       { status: 400 }
     )
   }
 
-  // (opcional) validar que los product sean ObjectId válidos antes de llamar al handler
-  for (const it of body.items) {
-    if (!it?.product || !Types.ObjectId.isValid(it.product) || !it?.qty || it.qty < 1) {
-      return NextResponse.json(
-        { error: 'WRONG_PARAMS', message: 'Each item needs a valid product and qty >= 1.' },
-        { status: 400 }
-      )
-    }
-  }
-
-  // Llamamos al handler tal cual (él hará sus validaciones también)
   const result = await postUserOrder(userId, {
-    items: body.items.map(i => ({ product: new Types.ObjectId(i.product), qty: i.qty })),
+    items: itemsFromCart,
+    address,
+    cardHolder,
+    cardNumber,
   })
 
-  // Mapear strings de error a HTTP
   if (typeof result === 'string') {
     switch (result) {
       case 'user no valido':
@@ -150,7 +231,9 @@ export async function POST(
     }
   }
 
-  // Éxito: result es { _id }
+  // Clear cart after successful order creation
+  await Users.findByIdAndUpdate(userId, { $set: { cartItems: [] } })
+
   const headers = new Headers()
   headers.append('Location', `/api/users/${userId}/orders/${result._id}`)
   return NextResponse.json(result, { status: 201, headers })

@@ -164,6 +164,9 @@ export async function postUserOrder(
   userId: Types.ObjectId | string,
   order: {
     items: { product: Types.ObjectId; qty: number }[];
+    address?: string;
+    cardHolder?: string;
+    cardNumber?: string;
   }
 ): Promise<PostUserOrderResponse | string> {
   await connect();
@@ -173,11 +176,19 @@ export async function postUserOrder(
     console.warn('[postUserOrder] Invalid user ID:', userId);
     return "user no valido";
   }
+  const productIds = order.items.map((i) => i.product);
+  const products = await Products.find(
+    { _id: { $in: productIds } },
+    { _id: 1, price: 1 }
+  ).lean<{ _id: Types.ObjectId; price: number }[]>();
+  const priceMap = new Map<string, number>(
+    products.map((p) => [p._id.toString(), p.price])
+  );
+  // Validate all products exist
   for (const item of order.items) {
-    const validProductId = await Products.exists({ _id: item.product });
-    if (!validProductId) {
+    if (!priceMap.has(item.product.toString())) {
       console.warn('[postUserOrder] Invalid order item:', item);
-      return "product not found";
+      return 'product not found';
     }
   }
 
@@ -191,12 +202,17 @@ export async function postUserOrder(
     return "user not found";
   }
 
-  const newOrder = {
+  const newOrder: Partial<Order> & { user: Types.ObjectId; items: { product: Types.ObjectId; qty: number; price: number }[]; date: Date } = {
     user: uid,
-    items: order.items.map(item => ({
+    items: order.items.map((item) => ({
       product: item.product,
       qty: item.qty,
+      price: priceMap.get(item.product.toString()) as number,
     })),
+    address: order.address,
+    cardHolder: order.cardHolder,
+    cardNumber: order.cardNumber,
+    date: new Date(),
   };
 
   const createdOrder = await Orders.create(newOrder);

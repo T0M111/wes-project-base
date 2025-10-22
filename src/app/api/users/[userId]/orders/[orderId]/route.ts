@@ -87,14 +87,14 @@ export async function GET(
 			price: typeof i.price === 'number' ? i.price : (i.product as ProductShape).price,
 		}))
 
-	const response: OrderResponseBody = {
-		_id: anyOrder._id,
-		address: anyOrder.address,
-		date: anyOrder.date,
-		cardHolder: anyOrder.cardHolder,
-		cardNumber: anyOrder.cardNumber,
-		orderItems,
-	}
+		const response: OrderResponseBody = {
+			_id: anyOrder._id,
+			address: anyOrder.address ?? '',
+			date: anyOrder.date ?? undefined,
+			cardHolder: anyOrder.cardHolder ?? '',
+			cardNumber: anyOrder.cardNumber ?? '',
+			orderItems,
+		}
 
 	return NextResponse.json(response)
 }
