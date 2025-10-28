@@ -3,6 +3,7 @@ import { Types } from 'mongoose'
 import connect from '@/lib/mongoose'
 import Users from '@/models/User'
 import Products from '@/models/Product'
+import { getSession } from '@/lib/auth'
 
 type CartItemProduct = {
   _id: Types.ObjectId
@@ -29,6 +30,15 @@ export async function PUT(
   | NextResponse<{ error: string; message: string }>
 > {
   const { userId, productId } = params
+
+  // Authentication & authorization
+  const session = await getSession()
+  if (!session?.userId) {
+    return NextResponse.json({ error: 'NOT_AUTHENTICATED', message: 'Authentication required.' }, { status: 401 })
+  }
+  if (session.userId.toString() !== userId) {
+    return NextResponse.json({ error: 'NOT_AUTHORIZED', message: 'Unauthorized access.' }, { status: 403 })
+  }
 
   // Validate IDs
   if (!Types.ObjectId.isValid(userId) || !Types.ObjectId.isValid(productId)) {

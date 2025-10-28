@@ -3,6 +3,7 @@ import { Types } from 'mongoose'
 import connect from '@/lib/mongoose'
 import Users from '@/models/User'
 import Orders from '@/models/Order'
+import { getSession } from '@/lib/auth'
 
 type ProductShape = {
 	_id: Types.ObjectId
@@ -35,6 +36,15 @@ export async function GET(
 	| NextResponse<{ error: string; message: string }>
 > {
 	const { userId, orderId } = params
+
+	// Authentication & Authorization
+	const session = await getSession()
+	if (!session?.userId) {
+		return NextResponse.json({ error: 'NOT_AUTHENTICATED', message: 'Authentication required.' }, { status: 401 })
+	}
+	if (session.userId.toString() !== userId) {
+		return NextResponse.json({ error: 'NOT_AUTHORIZED', message: 'Unauthorized access.' }, { status: 403 })
+	}
 
 	// Validate IDs
 	if (!Types.ObjectId.isValid(userId) || !Types.ObjectId.isValid(orderId)) {
