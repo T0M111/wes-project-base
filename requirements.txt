@@ -1,0 +1,49 @@
+- POST: http://localhost:3000/api/users/
+	+ REQUEST:
+		{
+    	"name": "Tomy",
+  	"address": "Daimiel, Spain",
+    	"birthdate": "2003-05-08",
+    	"email": "tomas.romero1@alu.uclm.es",
+    	"password": "1234",
+    	"surname": "Romero",
+    	"userId": "Tomy123"
+		}
+- PUT: http://localhost:3000/api/users/68f88d59f1e7b3a9e5094c0b/cart/68f888b4055a44ecd2724fea
+	+ REQUEST: 
+		{
+    "cartItems": [
+        {
+            "product": {
+                "_id": "68f888b4055a44ecd2724fea",
+                "name": "Canción de Hielo y Fuego",
+                "description": "What a book!",
+                "img": "https://imgs.search.brave.com/u2y3CfjhnRvXbI4_R8m6_8jUcVA79CtWgNgduTM0dx8/rs:fit:860:0:0:0/g:ce/aHR0cHM6Ly9tZWRp/YS52YW5kYWwubmV0/L2kvNjIweDQ0Mi81/LTIwMjIvMjAyMjUx/OTE0MjYxNDU0XzIu/anBn",
+                "price": 29.95
+            },
+            "qty": 3
+        }
+   		 ]
+		}
+
+- POST: http://localhost:3000/api/users/68f88d59f1e7b3a9e5094c0b/orders
+	+ REQUEST:
+		{
+		"items": [
+			{ "product": "68f888b4055a44ecd2724fea",
+  				"qty": 3 }
+			],
+		"address": "Calle España",
+		"cardHolder": "Tomy",
+		"cardNumber": "0000111122223333"
+		}
+
+--------------------PRACTICE 2-----------------------------
+
+- POST: http://localhost:3000/api/auth/singin
+	+ REQUEST 
+	{
+    		"email":"johndoe@example.com",
+   		"password" : "1234"
+	}
+

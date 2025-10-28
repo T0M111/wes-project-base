@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { Types } from 'mongoose';
 import connect from '@/lib/mongoose';
+import { getSession } from '@/lib/auth'
 
 // 👇 importa los modelos para que se registren en Mongoose
 import '@/models/Order';
@@ -33,6 +34,15 @@ export async function GET(
   { params }: { params: { userId: string } }
 ): Promise<NextResponse<OrdersResponseBody> | NextResponse<{ error: string; message: string }>> {
   const { userId } = params;
+
+  // Authentication & Authorization
+  const session = await getSession()
+  if (!session?.userId) {
+    return NextResponse.json({ error: 'NOT_AUTHENTICATED', message: 'Authentication required.' }, { status: 401 })
+  }
+  if (session.userId.toString() !== userId) {
+    return NextResponse.json({ error: 'NOT_AUTHORIZED', message: 'Unauthorized access.' }, { status: 403 })
+  }
 
   if (!Types.ObjectId.isValid(userId)) {
     return NextResponse.json(
@@ -91,6 +101,15 @@ export async function POST(
   { params }: { params: { userId: string } }
 ): Promise<NextResponse<PostUserOrderResponse> | NextResponse<ErrorResponse>> {
   const { userId } = params
+
+  // Authentication & Authorization
+  const session = await getSession()
+  if (!session?.userId) {
+    return NextResponse.json({ error: 'NOT_AUTHENTICATED', message: 'Authentication required.' }, { status: 401 })
+  }
+  if (session.userId.toString() !== userId) {
+    return NextResponse.json({ error: 'NOT_AUTHORIZED', message: 'Unauthorized access.' }, { status: 403 })
+  }
 
   // Validate userId
   if (!Types.ObjectId.isValid(userId)) {

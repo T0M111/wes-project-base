@@ -4,9 +4,12 @@ import connect from '@/lib/mongoose';
 import Products, { Product } from '@/models/Product';
 import Users, { User } from '@/models/User';
 import Orders, { Order } from '@/models/Order';
+import bcrypt from 'bcrypt'
 
 dotenv.config({ path: `.env.local`, override: true });
 const MONGODB_URI = process.env.MONGODB_URI;
+
+
 
 // (Opcional) asegura conexión única si usas este módulo en CLIs
 if (!mongoose.connection.readyState && !MONGODB_URI) {
@@ -109,14 +112,22 @@ export async function createUser(user: {
   birthdate: Date; // si viene como string, cambia a string y haz new Date(...)
 }): Promise<CreateUserResponse | null> {
   await connect();
-
+  // Normalizar email y comprobar existencia
+  const normalizedEmail = user.email.trim().toLowerCase();
   // Más eficiente que find(): devuelve uno o null
-  const existing = await Users.findOne({ email: user.email }).lean();
+  const existing = await Users.findOne({ email: normalizedEmail }).lean();
   if (existing) return null;
 
+  // Hash de la contraseña
+  const hash = await bcrypt.hash(user.password, 10);
   const doc: User = {
-    ...user,
-    // si user.birthdate ya es Date, no hace falta new Date(user.birthdate)
+    email: normalizedEmail,
+    password: hash,
+    name: user.name,
+    surname: user.surname,
+    address: user.address,
+    // Asegurar que birthdate se almacena como Date
+    birthdate: new Date(user.birthdate),
     cartItems: [],
     orders: [],
   };
@@ -220,4 +231,22 @@ export async function postUserOrder(
   await user.save();
 
   return { _id: createdOrder._id as Types.ObjectId };
+
+
+}
+export interface CheckCredentialsResponse {
+  _id: Types.ObjectId;
+}
+export async function checkCredentials(
+email: string,
+password: string
+): Promise<CheckCredentialsResponse | null> {
+  const normalizedEmail = email.trim().toLowerCase();
+  const user = await Users.findOne({email: normalizedEmail })//.select('+password ');
+   if (!user) return null;
+  const match = await bcrypt.compare(password, user.password);
+  if (!match) return null;
+
+  
+  return { _id: user._id as Types.ObjectId };
 }

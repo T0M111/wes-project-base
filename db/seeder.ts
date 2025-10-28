@@ -1,6 +1,7 @@
 import Products, { Product } from '@/models/Product';
 import Users, { User } from '@/models/User';
 import Orders from '@/models/Order';
+import bcrypt from 'bcrypt'
 import dotenv from 'dotenv';
 import mongoose from 'mongoose';
 
@@ -47,26 +48,45 @@ async function seed() {
   
   const insertedProducts = await Products.insertMany(products);
   
-  const user: User = {
-    email: 'johndoe@example.com',
-    password: '1234',
-    name: 'John',
-    surname: 'Doe',
-    address: '123 Main St, 12345 New York, United States',
-    birthdate: new Date('1970-01-01'),
-    cartItems: [
-      {
-        product: insertedProducts[0]._id,
-        qty: 2,
-      },
-      {
-        product: insertedProducts[1]._id,
-        qty: 5,
-      },
-    ],
-    orders: [],
-  };
-  const res = await Users.create(user);
+  const users: User[] = [
+    {
+      email: 'johndoe@example.com',
+      password: '1234',
+      name: 'John',
+      surname: 'Doe',
+      address: '123 Main St, 12345 New York, United States',
+      birthdate: new Date('1970-01-01'),
+      cartItems: [
+        {
+          product: insertedProducts[0]._id,
+          qty: 2,
+        },
+      ],
+      orders: [],
+    },
+    {
+      email: 'janedoe@example.com',
+      password: 'abcd',
+      name: 'Jane',
+      surname: 'Doe',
+      address: '456 Another St, 54321 London, UK',
+      birthdate: new Date('1980-02-02'),
+      cartItems: [
+        {
+          product: insertedProducts[1]._id,
+          qty: 1,
+        },
+      ],
+      orders: [],
+    },
+  ];
+
+  // Hash passwords before inserting
+  for (const u of users) {
+    u.password = await bcrypt.hash(u.password, 10);
+  }
+
+  const res = await Users.insertMany(users);
   console.log(JSON.stringify(res, null, 2));
 
 const userProjection = {
