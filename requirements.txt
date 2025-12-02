@@ -37,3 +37,13 @@
 		"cardHolder": "Tomy",
 		"cardNumber": "0000111122223333"
 		}
+
+--------------------PRACTICE 2-----------------------------
+
+- POST: http://localhost:3000/api/auth/singin
+	+ REQUEST 
+	{
+    		"email":"johndoe@example.com",
+   		"password" : "1234"
+	}
+
