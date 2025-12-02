@@ -7,13 +7,13 @@ export interface OrderItem {
 }
 
 export interface Order {
-  user: Types.ObjectId;
+  user: Types.ObjectId; //no hace falta el id aqui, añadido de complejidad
   items: OrderItem[];
   // Optional metadata (some flows may not set these)
-  address?: string;
-  date?: Date;
-  cardHolder?: string;
-  cardNumber?: string;
+  address: string;
+  date: Date;
+  cardHolder: string;
+  cardNumber: string;
 }
 
   const OrderSchema = new Schema<Order>({

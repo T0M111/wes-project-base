@@ -174,10 +174,10 @@ return { orders };
 export async function postUserOrder(
   userId: Types.ObjectId | string,
   order: {
-    items: { product: Types.ObjectId; qty: number }[];
-    address?: string;
-    cardHolder?: string;
-    cardNumber?: string;
+    items: { product: Types.ObjectId; qty: number }[];//quitar de parametros opcionales
+    address: string;
+    cardHolder: string;
+    cardNumber: string;
   }
 ): Promise<PostUserOrderResponse | string> {
   await connect();
@@ -241,6 +241,7 @@ export async function checkCredentials(
 email: string,
 password: string
 ): Promise<CheckCredentialsResponse | null> {
+  await connect();
   const normalizedEmail = email.trim().toLowerCase();
   const user = await Users.findOne({email: normalizedEmail })//.select('+password ');
    if (!user) return null;
