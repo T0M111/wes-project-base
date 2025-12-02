@@ -241,7 +241,6 @@ export async function checkCredentials(
 email: string,
 password: string
 ): Promise<CheckCredentialsResponse | null> {
-  await connect();
   const normalizedEmail = email.trim().toLowerCase();
   const user = await Users.findOne({email: normalizedEmail })//.select('+password ');
    if (!user) return null;
