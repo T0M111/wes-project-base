@@ -19,9 +19,9 @@ export default async function Navbar() {
               className='flex flex-shrink-0 items-center space-x-4 text-gray-300 hover:text-gray-100'
               href='/'
             >
-              <img className='block h-8 w-auto' src='/img/logo.svg' alt='GameShop logo'/>
+              <img className='block h-8 w-auto' src='/img/logo.svg' alt='Libros4J logo'/>
               <div className='inline-block w-auto text-xl font-semibold'>
-                GameShop
+                Libros4J
               </div>
             </Link>
           </div>
