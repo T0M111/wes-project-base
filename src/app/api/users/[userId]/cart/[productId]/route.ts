@@ -146,6 +146,14 @@ export async function DELETE(
 > {
   const { userId, productId } = params
 
+  const session = await getSession()
+  if (!session?.userId) {
+    return NextResponse.json({ error: 'NOT_AUTHENTICATED', message: 'Authentication required.' }, { status: 401 })
+  }
+  if (session.userId.toString() !== userId) {
+    return NextResponse.json({ error: 'NOT_AUTHORIZED', message: 'Unauthorized access.' }, { status: 403 })
+  }
+
   // Validate IDs
   if (!Types.ObjectId.isValid(userId) || !Types.ObjectId.isValid(productId)) {
     return NextResponse.json(
