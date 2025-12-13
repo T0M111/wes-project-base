@@ -24,15 +24,15 @@ return null
 }
 }
 export async function createSession(payload: Payload) {
-const session = await encode(payload)
-const expires = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)
-cookies().set('session', session, {
-httpOnly: true,
-secure: true,
-expires: expires,
-sameSite: 'lax',
-path: '/',
-})
+  const session = await encode(payload)
+  const expires = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)
+  cookies().set('session', session, {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === 'production',
+    expires: expires,
+    sameSite: 'lax',
+    path: '/',
+  })
 }
 export async function getSession() {
 const session = cookies().get('session')?.value

@@ -49,6 +49,30 @@ export default function CartTable({ items, userId }: CartTableProps) {
     }
   }
 
+  const removeOne = async (productId: string) => {
+    setIsLoading(true)
+    try {
+      const response = await fetch(`/api/users/${userId}/cart/${productId}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ qty: 0 }),
+      })
+
+      if (response.ok) {
+        router.refresh()
+      } else {
+        const error = await response.json()
+        alert(`Error: ${error.message}`)
+      }
+    } catch (error) {
+      alert('Error removing item')
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
   const removeItem = async (productId: string) => {
     setIsLoading(true)
     try {
@@ -64,6 +88,33 @@ export default function CartTable({ items, userId }: CartTableProps) {
       }
     } catch (error) {
       alert('Error removing item')
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  const removeAll = async () => {
+    if (!confirm('Are you sure you want to remove all items from your cart?')) {
+      return
+    }
+
+    setIsLoading(true)
+    try {
+      const deletePromises = items.map((item) =>
+        fetch(`/api/users/${userId}/cart/${item.product._id}`, {
+          method: 'DELETE',
+        })
+      )
+
+      const responses = await Promise.all(deletePromises)
+
+      if (responses.every((response) => response.ok)) {
+        router.refresh()
+      } else {
+        alert('Error removing some items from cart')
+      }
+    } catch (error) {
+      alert('Error removing items')
     } finally {
       setIsLoading(false)
     }
@@ -128,13 +179,22 @@ export default function CartTable({ items, userId }: CartTableProps) {
                   {(cartItem.product.price * cartItem.qty).toFixed(2)} €
                 </td>
                 <td className='px-6 py-4 text-right'>
-                  <button
-                    onClick={() => removeItem(cartItem.product._id)}
-                    disabled={isLoading}
-                    className='text-red-600 hover:text-red-800 disabled:text-red-300'
-                  >
-                    Remove
-                  </button>
+                  <div className='space-y-2'>
+                    <button
+                      onClick={() => removeOne(cartItem.product._id)}
+                      disabled={isLoading}
+                      className='block w-full text-sm text-red-600 hover:text-red-800 disabled:text-red-300'
+                    >
+                      Remove one
+                    </button>
+                    <button
+                      onClick={() => removeItem(cartItem.product._id)}
+                      disabled={isLoading}
+                      className='block w-full text-sm text-red-600 hover:text-red-800 disabled:text-red-300'
+                    >
+                      Remove all
+                    </button>
+                  </div>
                 </td>
               </tr>
             ))}
@@ -147,12 +207,21 @@ export default function CartTable({ items, userId }: CartTableProps) {
           <span>Total:</span>
           <span>{total.toFixed(2)} €</span>
         </div>
-        <Link
-          href='/checkout'
-          className='mt-4 block w-full rounded-md bg-gray-800 px-4 py-3 text-center text-sm font-semibold text-white hover:bg-gray-700'
-        >
-          Check out
-        </Link>
+        <div className='mt-4 space-y-3'>
+          <button
+            onClick={removeAll}
+            disabled={isLoading || items.length === 0}
+            className='block w-full rounded-md bg-red-600 px-4 py-3 text-center text-sm font-semibold text-white hover:bg-red-700 disabled:bg-red-300'
+          >
+            Clear Cart
+          </button>
+          <Link
+            href='/checkout'
+            className='block w-full rounded-md bg-gray-800 px-4 py-3 text-center text-sm font-semibold text-white hover:bg-gray-700'
+          >
+            Check out
+          </Link>
+        </div>
       </div>
     </div>
   )

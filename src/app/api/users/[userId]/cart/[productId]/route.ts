@@ -59,11 +59,11 @@ export async function PUT(
   }
 
   const qty = typeof body.qty === 'number' ? body.qty : Number(body.qty)
-  if (!Number.isInteger(qty) || qty <= 0) {
+  if (!Number.isInteger(qty) || qty < 0) {
     return NextResponse.json(
       {
         error: 'WRONG_PARAMS',
-        message: 'Quantity must be an integer greater than 0.',
+        message: 'Quantity must be a non-negative integer.',
       },
       { status: 400 }
     )
@@ -89,6 +89,36 @@ export async function PUT(
     )
   }
 
+  // If qty is 0, remove the item from cart
+  if (qty === 0) {
+    const updatedUserDoc = await Users.findByIdAndUpdate(
+      userId,
+      { $pull: { cartItems: { product: productId } } },
+      { new: true }
+    )
+
+    const finalUser = await updatedUserDoc?.populate({
+      path: 'cartItems.product',
+      select: '-__v',
+    })
+
+    const fu = finalUser as unknown as
+      | { cartItems: { product: CartItemProduct | null; qty: number }[] }
+      | null
+
+    const responseBody: CartResponseBody = {
+      cartItems:
+        fu?.cartItems
+          .filter((i) => i.product !== null)
+          .map((i) => ({
+            product: i.product as CartItemProduct,
+            qty: i.qty,
+          })) ?? [],
+    }
+
+    return NextResponse.json(responseBody, { status: 200 })
+  }
+
   // Try to update existing cart item
   const updatedUserIfExists = await Users.findOneAndUpdate(
     { _id: userId, 'cartItems.product': productId },
@@ -109,8 +139,15 @@ export async function PUT(
     status = 201
   }
 
+  if (!updatedUserDoc) {
+    return NextResponse.json(
+      { error: 'UPDATE_FAILED', message: 'Failed to update cart.' },
+      { status: 500 }
+    )
+  }
+
   // Populate product details for response (Mongoose v7+)
-  const finalUser = await Users.findById(userId).populate({
+  const finalUser = await updatedUserDoc.populate({
     path: 'cartItems.product',
     select: '-__v',
   })
